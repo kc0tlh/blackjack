@@ -1,59 +1,92 @@
 #BlackJack.rb
 
+#This is a simple single player blackjack game.
+#There are no chips or fancy play like splits, double downs, etc. 
+#You play against an AI dealer and the highest hand under 21 wins.
+#She will hit if her hand is under 17, and stand if it is over 17.
+#Number ards are worth thier face value, J, Q, and K are worth 10, and Aces are 11.
+#As in casino blackjack, Aces are soft (They become 1s if an 11 would cause you to bust).
+#If taking another card causes your hand total to exceed 21, you 'bust' and lose immediately. 
+
+
 class Game
-
+	attr_accessor :hand_count
 	def initialize
-		how_many_players
+		$player_1 = Players.new("Player 1")
+		$dealer1 = Dealer.new
+		@hand_count = 0
+		play_hand
 	end
 
-	def how_many_players
-		until $number_of_players != nil && $number_of_players.to_i <= 2
-			puts "How many players? (Enter a number <= 2)"
-			$number_of_players = gets.chomp
-		end
-		self.create
-	end
+	def play_hand
+		@hand_count += 1
+		puts "Hand: #{@hand_count}"
+		$dealer1.shuffle
+		$dealer1.deal
+#See Dealer Card
+		puts "Dealer is showing #{$dealer1.card1}"
+#See Your Cards
+		puts "#{$player_1.name} has #{$player_1.card1} and #{$player_1.card2}"
+#until you dont want to anymore"
+	#Hit
+	#See cards and Total
+		player_action
 
-	def create
-		if $number_of_players.to_i == 1
-			$player_1 = Players.new("Player 1")
-		else if $number_of_players.to_i == 2
-			$player_1 = Players.new("Player 1")
-			$player_2 = Players.new("Player 2")
-		else if $number_of_players.to_i == nil
-			self.how_many_players
+		$dealer1.dealer_action
+
+		if $dealer1_final_hand > $player1_final_hand
+			puts "Dealer wins with #{$dealer1_final_hand}"
 		else
-			puts "There has been an error creating players."	
+			puts "Player wins with #{$player1_final_hand}"
 		end
+
+		puts "\n\n\n\nDiscard"
+		p $discard
+		puts "Deck"
+		p $deck
+	end
+
+#Shared Methods
+
+	def random_card	
+		$deck[rand(52)]
+	end
+
+	def player_action
+		player_decision = nil
+		until player_decision == "stay"
+			puts "Would you like to 'hit' or 'stay'?"
+			player_decision = gets.chomp
+			if player_decision == "hit"
+				$player_1.hit($player_1)
+				puts "#{$player_1.name} now has #{$player_1.player_cards.join(', ')} for a total hand value of #{$player_1.card_total($player_1)}"
+			end
 		end
-		end
-	end	
-end
 
-
-class Players
-	attr_accessor :card1, :card2, :card3, :card4, :card5, :name
-
-	def initialize(name)
-		@name = name
+		$player1_final_hand = $player_1.card_total($player_1)
 	end
 
 	def hit(current_player)
-		if current_player.card3 == nil && card_total(current_player) < 22
+		if current_player.card3 == nil && card_total(current_player) < 21
 			until current_player.card3 != nil
 			$discard << current_player.card3 = random_card end
 			$deck = $deck - $discard
-		elsif current_player.card4 == nil && card_total(current_player) < 22
+			$player_1.player_cards << $player_1.card3
+		elsif current_player.card4 == nil && card_total(current_player) < 21
 			until current_player.card4 != nil
 			$discard << current_player.card4 = random_card end
 			$deck = $deck - $discard
-		elsif current_player.card5 == nil && card_total(current_player) < 22
+			$player_1.player_cards << $player_1.card4
+		elsif current_player.card5 == nil && card_total(current_player) < 21
 			until current_player.card5 != nil
 			$discard << current_player.card5 = random_card end
 			$deck = $deck - $discard
-
-		elsif current_player.card_total > 21
-			puts "#{current_player} busted with #{current_player.card_total}"
+			$player_1.player_cards << $player_1.card5
+		end
+		
+		if card_total(current_player) > 21
+			puts "#{current_player.name} busted with #{card_total(current_player)} \n GAME OVER"
+			game1 = Game.new
 		end
 	end	
 
@@ -75,18 +108,23 @@ class Players
 			#puts card.to_i
 			card_sum = card_sum + card.to_i
 		end
-		return card_sum
+
+		if card_sum > 21 && cards.join(",").include?('a')
+			then
+			card_sum = card_sum - 10
+			else
+			return card_sum
+		end
 	end
 
-	def random_card
-		random = rand(52)	
-		$deck[random]
+	def wait(s=1)
+		sleep(s)
 	end
 end
 
-class Dealer
+class Dealer < Game
 	attr_accessor :card1, :card2, :card3, :card4, :card5, :name, :deck, :discard
-
+	
 	def initialize
 		@name = "dealer"
 		@card1 = nil
@@ -94,16 +132,13 @@ class Dealer
 		@card3 = nil
 		@card4 = nil
 		@card5 = nil
-		$deck = ["1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "js", "qs", "ks", "as", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "jh", "qh", "kh", "ah", "1d", "2d", "3d", "4d", "5d", "6d", "7d", "8d", "9d", "10d", "jd", "qd", "kd", "ad", "1c", "2c", "3c", "4c", "5c", "6c", "7c", "8c", "9c", "10c", "jc", "qc", "kc", "ac"]
+	end
+
+	def shuffle
+		$deck = ["1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "10s", "js", "qs", "ks", "as", "1h", "2h", "3h", "4h", "5h", "6h", "7h", "8h", "9h", "10h", "jh", "qh", "kh", "ah", "1d", "2d", "3d", "4d", "5d", "6d", "7d", "8d", "9d", "10d", "jd", "qd", "kd", "ad", "1c", "2c", "3c", "4c", "5c", "6c", "7c", "8c", "9c", "10c", "jc", "qc", "kc", "ac"].shuffle
 		@deck = $deck
 		$discard = []
 		@discard = $discard
-
-	end
-
-	def random_card
-		random = rand(52)	
-		$deck[random]
 	end
 
 	def deal
@@ -111,19 +146,13 @@ class Dealer
 			until $player_1.card1 != nil
 			$discard << $player_1.card1 = random_card end
 			$deck = $deck - $discard
+			$player_1.player_cards << $player_1.card1
 			until $player_1.card2 != nil
 			$discard << $player_1.card2 = random_card end
 			$deck = $deck - $discard
+			$player_1.player_cards << $player_1.card2
 		end
 
-		if $player_2 != nil
-			until $player_2.card1 != nil
-			$discard << $player_2.card1 = random_card end
-			$deck = $deck - $discard
-			until $player_2.card2 != nil
-			$discard << $player_2.card2 = random_card end
-			$deck = $deck - $discard
-		end
 		until $dealer1.card1 != nil
 		$discard << $dealer1.card1 = random_card end
 		$deck = $deck - $discard
@@ -131,23 +160,26 @@ class Dealer
 		$discard << $dealer1.card2 = random_card end
 		$deck = $deck - $discard
 	end
+
+	def dealer_action
+		until $dealer1.card_total($dealer1) >= 17
+			$dealer1.hit($dealer1)
+		end
+
+		puts "Dealer has #{$dealer1.card1} #{$dealer1.card2} #{$dealer1.card3} #{$dealer1.card4} #{$dealer1.card5} for a total hand value of #{$dealer1.card_total($dealer1)}"
+		$dealer1_final_hand = $dealer1.card_total($dealer1)	
+	end	
+end
+
+
+class Players < Game
+	attr_accessor :card1, :card2, :card3, :card4, :card5, :player_cards, :name
+
+	def initialize(name)
+		@name = name
+		@player_cards = []
+	end
+
 end
 
 game1 = Game.new
-$dealer1 = Dealer.new
-$dealer1.deal
-p $player_1.name
-puts $player_1.card1
-puts $player_1.card2
-if $player_2 != nil then p $player_2.name 
-puts $player_2.card1
-puts $player_2.card2 end
-p "Dealer"
-puts $dealer1.card1
-puts $dealer1.card2
-puts "Discard"
-p $discard
-puts "Deck"
-p $deck
-puts "Card Total"
-puts $player_1.card_total($player_1)
