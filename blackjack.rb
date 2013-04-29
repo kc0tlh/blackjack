@@ -3,14 +3,13 @@
 #This is a simple single player blackjack game.
 #There are no chips or fancy play like splits, double downs, etc. 
 #You play against an AI dealer and the highest hand under 21 wins.
-#She will hit if her hand is under 17, and stand if it is over 17.
-#Number ards are worth thier face value, J, Q, and K are worth 10, and Aces are 11.
+#She will hit if her hand is under 17, and stand if it is equal to or over 17.
+#Number cards are worth thier face value, J, Q, and K are worth 10, and Aces are 11.
 #As in casino blackjack, Aces are soft (They become 1s if an 11 would cause you to bust).
 #If taking another card causes your hand total to exceed 21, you 'bust' and lose immediately. 
 
 
 class Game
-	attr_accessor :hand_count
 	def initialize
 		$player_1 = Players.new("Player 1")
 		$dealer1 = Dealer.new
@@ -20,22 +19,29 @@ class Game
 	def play_hand
 		$hand_count += 1
 		puts "Hand: #{$hand_count}"
+		wait
 		$dealer1.shuffle
 		$dealer1.deal
+
+#Check if dealer or player wins instantly with blackjack (2 card 21 IE: Ace, King)
+		has_blackjack?($dealer1, $player_1)
+
 #See Dealer Card
-		puts "Dealer is showing #{$dealer1.card1}"
+		puts "Dealer is showing #{$dealer1.hand[0]}"
+		wait
 #See Your Cards
-		puts "#{$player_1.name} has #{$player_1.card1} and #{$player_1.card2}"
+		puts "#{$player_1.name} has #{$player_1.hand.join(', ')} for a total hand value of #{card_total($player_1)}"
+		wait
 #until you dont want to anymore"
 	#Hit
 	#See cards and Total
 		$player_1.player_action
+		wait	
 
 		$dealer1.dealer_action
 
 		winner
-
-		Game.new
+		wait(2)
 	end
 
 #Shared Methods
@@ -44,18 +50,31 @@ class Game
 		$deck[rand(52)]
 	end
 
+	def has_blackjack?(dealer, player)
+		if card_total(dealer) == 21 && card_total(player) == 21
+			puts "Dealer and #{player.name} have Blackjack! This hand is a push."
+			Game.new
+		elsif card_total(dealer) == 21
+			puts "Dealer wins with Blackjack!"
+			Game.new
+		elsif card_total(player) == 21
+			"#{player.name} wins with Blackjack! Dealer had #{dealer.hand.join(', ')}"
+			Game.new
+		end
+	end
+
 	def hit(current_player)
-		if current_player.card3 == nil && card_total(current_player) < 21
+		if current_player.card3 == nil
 			until current_player.card3 != nil
 			$discard << current_player.card3 = random_card end
 			$deck = $deck - $discard
 			current_player.hand << current_player.card3
-		elsif current_player.card4 == nil && card_total(current_player) < 21
+		elsif current_player.card4 == nil
 			until current_player.card4 != nil
 			$discard << current_player.card4 = random_card end
 			$deck = $deck - $discard
 			current_player.hand << current_player.card4
-		elsif current_player.card5 == nil && card_total(current_player) < 21
+		elsif current_player.card5 == nil
 			until current_player.card5 != nil
 			$discard << current_player.card5 = random_card end
 			$deck = $deck - $discard
@@ -64,47 +83,59 @@ class Game
 	end	
 
 	def card_total(current_player)
-		cards = []
-		if current_player.card1 != nil
-		cards << current_player.card1 end
-		if current_player.card2 != nil
-		cards << current_player.card2 end
-		if current_player.card3 != nil
-		cards << current_player.card3 end
-		if current_player.card4 != nil
-		cards << current_player.card4 end
-		if current_player.card5 != nil
-		cards << current_player.card5 end
-		card_sum = 0
-		cards.each do |card|
-			if card.match(/[1,2,3,4,5,6,7,8,9,10]/) then card.gsub!(/\D/, "") elsif card =~ /[jqk]/ then card = "10" elsif card =~ /a/ then card = "11" end
-			#puts card.to_i
-			card_sum = card_sum + card.to_i
-		end
+		cards = current_player.hand.dup
+		card_sum = parse_cards(cards)
 
-		if card_sum > 21 && cards.join(",").include?('a')
-			card_sum = card_sum - 10
-		end
+		ace_index = cards.find_index {|c| c.match( /a{1,1}\D{1,1}/ )}
+
+		if card_sum > 21 &&	ace_index != nil
+			soft_ace(cards, ace_index)
+		else
 			return card_sum
+		end 
 	end
 
-	def wait(s=1)
+	def parse_cards(cards)
+		card_sum = 0
+		cards.each do |card|
+			if card =~ /[jqk]/ then card = "10" elsif card =~ /a/ then card = "11" end
+			card_sum = card_sum + card.to_i
+		end
+		return card_sum
+	end
+
+	def soft_ace(cards, ace_index)
+		cards[ace_index] = "1"
+		card_sum = parse_cards(cards)
+		return card_sum
+	end
+
+	def wait(s=0.5)
 		sleep(s)
 	end
 
 	def winner
+		$player_1.hand_total = card_total($player_1)
+		$dealer1.hand_total = card_total($dealer1)
+		
 		if $player_1.hand_total > 21
-			puts "#{$player_1.name} busted with #{card_total($player_1)}"
-			puts "Dealer had #{$dealer1.hand.join(', ')} for a total of #{card_total($dealer1)}"
-			Game.new
-		elsif	
-			$dealer1.hand_total > $player_1.hand_total && $dealer1.hand_total <= 21
+			puts "#{$player_1.name} busted with #{$player_1.hand_total}"
+			puts "Dealer won with #{$dealer1.hand.join(', ')} for a total of #{$dealer1.hand_total}"
+		elsif $dealer1.hand_total > 21
+			puts "Dealer busted with #{$dealer1.hand_total}"
+			puts "#{$player_1.name} won with #{$player_1.hand.join(', ')} for a total of #{$player_1.hand_total}"
+		elsif $dealer1.hand_total > $player_1.hand_total && $dealer1.hand_total <= 21
 			puts "Dealer wins with #{$dealer1.hand_total}"
 		elsif $player_1.hand_total > $dealer1.hand_total && $player_1.hand_total <= 21
 			puts "Player wins with #{$player_1.hand_total}"
 		elsif $dealer1.hand_total == $player_1.hand_total
 			puts "Player and Dealer Tie with #{$dealer1.hand_total}"
 		end
+
+		puts ''
+		puts ''
+
+		Game.new
 	end	
 end
 
@@ -154,9 +185,14 @@ class Dealer < Game
 		until card_total($dealer1) >= 17
 			hit($dealer1)
 			puts "Dealer has #{$dealer1.hand.join(', ')} for a total hand value of #{card_total($dealer1)}"
-			wait(2)				
+			wait(1)				
 		end
+
 		$dealer1.hand_total = card_total($dealer1)
+
+		if $dealer1.hand_total > 21
+			winner
+		end	
 	end	
 end
 
@@ -172,12 +208,14 @@ class Players < Game
 
 	def player_action
 		player_decision = nil
-		until player_decision == "stay"
-			puts "Would you like to 'hit' or 'stay'?"
-			player_decision = gets.chomp
-			if player_decision == "hit"
+		until player_decision == "stay" || player_decision == "s" || card_total($player_1) >= 21
+			puts "Would you like to 'Hit' or 'Stay'?"
+			player_decision = gets.chomp.downcase
+			if ["hit", "h"].include? player_decision
 				hit($player_1)
 				puts "#{$player_1.name} now has #{$player_1.hand.join(', ')} for a total hand value of #{$player_1.card_total($player_1)}"
+			elsif ["exit", "e", "quit", "q"].include? player_decision
+				exit
 			end
 		end
 
